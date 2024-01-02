@@ -51,6 +51,10 @@ io.on("connection", async (socket) => {
         console.log("Data:", data);
         socket.emit("result", data);
       });
+      containerProcess.stderr.on("data", (data) => {
+        console.log("Error:", data);
+        socket.emit("result", data);
+      });
       containerProcess.stdin.write(command + "\n");
     });
   } catch (err) {
