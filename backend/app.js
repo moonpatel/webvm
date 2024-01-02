@@ -5,6 +5,7 @@ require("dotenv").config();
 const { createContainer, getContainerProcess } = require("./docker");
 const port = process.env.PORT || 9000;
 const cors = require("cors");
+const pty = require("node-pty");
 
 const app = express();
 const httpServer = createServer(app);
@@ -44,18 +45,36 @@ io.on("connection", async (socket) => {
     let containerId = await createContainer("test", "ubuntu");
     console.log("Created container:", containerId);
 
+    const term = pty.spawn("bash", [], {
+      name: "xterm-color",
+      cols: 120,
+      rows: 32,
+      cwd: process.env.HOME,
+      env: process.env,
+    });
+
+    term.onData((data) => {
+      console.log("====================================");
+      console.log("Terminal output:", data);
+      console.log("====================================");
+      socket.emit("result", data);
+    });
+
     socket.on("command", async (command) => {
       console.log("Command:", command);
-      const containerProcess = await getContainerProcess("test");
-      containerProcess.stdout.on("data", (data) => {
-        console.log("Data:", data);
-        socket.emit("result", data);
-      });
-      containerProcess.stderr.on("data", (data) => {
-        console.log("Error:", data);
-        socket.emit("result", data);
-      });
-      containerProcess.stdin.write(command + "\n");
+      // const containerProcess = await getContainerProcess("test");
+      // containerProcess.stdout.on("data", (data) => {
+      //   console.log("Data:", data);
+      //   socket.emit("result", data);
+      // });
+      // containerProcess.stderr.on("data", (data) => {
+      //   console.log("Error:", data);
+      //   socket.emit("result", data);
+      // });
+      // containerProcess.stdin.write(command + "\n");
+
+     console.log("Command");
+      term.write(command);
     });
   } catch (err) {
     throw err;
