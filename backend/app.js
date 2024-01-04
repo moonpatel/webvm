@@ -45,9 +45,9 @@ io.on("connection", async (socket) => {
     let containerId = await createContainer("test", "ubuntu");
     console.log("Created container:", containerId);
 
-    const term = pty.spawn("bash", [], {
+    const term = pty.spawn("docker", ["exec","-it", "test", "bash"], {
       name: "xterm-color",
-      cols: 120,
+      cols: 100,
       rows: 32,
       cwd: process.env.HOME,
       env: process.env,
