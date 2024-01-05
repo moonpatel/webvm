@@ -11,26 +11,24 @@ const Terminal: React.FC<TerminalProps> = () => {
   const terminalInstance = useRef<XTerm | null>(null);
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  // const [currentCommand, setCurrentCommand] = useState("");
-  let currentCommand = "";
 
   useEffect(() => {
     socket.connect();
+
     console.log("hello");
     function onConnect() {
       setIsConnected(true);
+      socket.emit("id", localStorage.getItem("id"));
       console.log("Socket connection established");
     }
 
     function onDisconnect() {
       setIsConnected(false);
+      
       console.log("Socket disconnected");
     }
 
     socket.on("connect", onConnect);
-    socket.on("connect", () => {
-      console.log("Connected");
-    });
     socket.on("result", function (result) {
       terminalInstance.current?.write(result);
       console.log(result);
@@ -49,7 +47,7 @@ const Terminal: React.FC<TerminalProps> = () => {
       const terminal = new XTerm({
         fontFamily: "Ubuntu Mono",
         letterSpacing: 1,
-        cols: 120,
+        cols: 95,
         rows: 32,
       });
       const fitAddon = new FitAddon();

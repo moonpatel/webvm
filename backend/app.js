@@ -2,7 +2,7 @@ const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
-const { createContainer, getContainerProcess } = require("./docker");
+const { createContainer, getContainerProcess, getContainerDetails } = require("./docker");
 const port = process.env.PORT || 9000;
 const cors = require("cors");
 const pty = require("node-pty");
@@ -16,18 +16,13 @@ const io = new Server(httpServer, {
   },
 });
 
+const connections = {};
+
 app.use((req, res, next) => {
   console.log(req.url);
   next();
 });
 app.use(cors());
-// app.use((req, res, next) => {
-//   res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
-//   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-//   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-//   res.setHeader("Access-Control-Allow-Credentials", "true");
-//   next();
-// });
 
 app.get("/", (req, res) => {
   res.send("OK");
@@ -35,6 +30,7 @@ app.get("/", (req, res) => {
 
 io.on("connection", async (socket) => {
   try {
+    console.log("Connections:", connections);
     console.log("New socket connected:", socket.id);
 
     // register handlers
@@ -42,39 +38,65 @@ io.on("connection", async (socket) => {
       console.log(socket.id, "disconnected due to", reason);
     });
 
-    let containerId = await createContainer("test", "ubuntu");
-    console.log("Created container:", containerId);
+    socket.on("id", async (id) => {
+      console.log("ID received:", id);
+      // container does not exist, create it
+      if (!connections[id]) {
+        try {
+          let containerId = await createContainer(id, "ubuntu");
+          console.log("Created container:", containerId);
+          connections[id] = {
+            containerId,
+            socketId: socket.id, // be aware, changes on reconnect
+            term: null,
+          };
+        } catch (err) {
+          if (err.toString()?.includes(`Container named ${id} already exists.`)) {
+            let containerId = (await getContainerDetails(id)).Id;
+            connections[id] = {
+              containerId,
+              socketId: socket.id, // be aware, changes on reconnect
+              term: null,
+            };
+          } else {
+            throw err;
+          }
+        }
+      }
 
-    const term = pty.spawn("docker", ["exec","-it", "test", "bash"], {
-      name: "xterm-color",
-      cols: 100,
-      rows: 32,
-      cwd: process.env.HOME,
-      env: process.env,
-    });
+      // bash session does not exist, create it
+      if (!connections[id].term) {
+        console.log(connections[id].containerId);
+        connections[id].term = pty.spawn(
+          "docker",
+          ["exec", "-it", connections[id].containerId, "bash"],
+          {
+            name: "xterm-color",
+            cols: 95,
+            rows: 32,
+            cwd: process.env.HOME,
+            env: process.env,
+          }
+        );
+      } else {
+        socket.emit("result",connections[id].lastMessage);
+      }
 
-    term.onData((data) => {
-      console.log("====================================");
-      console.log("Terminal output:", data);
-      console.log("====================================");
-      socket.emit("result", data);
-    });
+      let term = connections[id].term;
 
-    socket.on("command", async (command) => {
-      console.log("Command:", command);
-      // const containerProcess = await getContainerProcess("test");
-      // containerProcess.stdout.on("data", (data) => {
-      //   console.log("Data:", data);
-      //   socket.emit("result", data);
-      // });
-      // containerProcess.stderr.on("data", (data) => {
-      //   console.log("Error:", data);
-      //   socket.emit("result", data);
-      // });
-      // containerProcess.stdin.write(command + "\n");
+      // register handlers
+      term.onData((data) => {
+        console.log("====================================");
+        console.log("Terminal output:", data);
+        console.log("====================================");
+        connections[id].lastMessage = data;
+        socket.emit("result", data);
+      });
 
-     console.log("Command");
-      term.write(command);
+      socket.on("command", (command) => {
+        console.log("Command:", command);
+        term.write(command);
+      });
     });
   } catch (err) {
     throw err;
