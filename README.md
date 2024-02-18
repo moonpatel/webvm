@@ -1,5 +1,7 @@
 ## WebVM: Access Virtual Machines Directly from Your Browser (Node.js & React)
 
+![image](https://github.com/moonpatel/webvm/assets/95487062/87b160b7-e1c3-4e3d-9b18-5b5d206fd7de)
+
 **WebVM** is a web application that allows you to access and manage virtual machines directly from your web browser through a terminal, eliminating the need for dedicated software or remote access tools. Built with Node.js and React, this project provides a terminal that can be accessed from any browser regardless of the operating system.
 
 ### Features:
