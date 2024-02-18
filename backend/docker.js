@@ -68,7 +68,7 @@ async function createContainer(containerName, imageName, port = 80) {
     try {
       console.log(`Creating container ${containerName}`);
       exec(
-        `docker run -d --name ${containerName} -p ${port}:80 ${imageName} tail -f /dev/null`,
+        `docker run -d --name ${containerName} ${imageName} tail -f /dev/null`,
         (err, stdout, stderr) => {
           if (stderr?.includes("docker: Error response from daemon: Conflict."))
             reject(

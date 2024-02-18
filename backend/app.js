@@ -1,8 +1,13 @@
 const express = require("express");
 const { createServer } = require("http");
+const path = require("path");
 const { Server } = require("socket.io");
 require("dotenv").config();
-const { createContainer, getContainerProcess, getContainerDetails } = require("./docker");
+const {
+  createContainer,
+  getContainerProcess,
+  getContainerDetails,
+} = require("./docker");
 const port = process.env.PORT || 9000;
 const cors = require("cors");
 const pty = require("node-pty");
@@ -11,7 +16,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -19,10 +24,18 @@ const io = new Server(httpServer, {
 const connections = {};
 
 app.use((req, res, next) => {
-  console.log(req.url);
+  console.log(req.ip, req.url);
   next();
 });
 app.use(cors());
+
+if (process.env.MODE === "PRODUCTION") {
+  console.log("Starting in production...");
+  app.use(express.static(path.join(__dirname, "../frontend/build")));
+  app.use("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../frontend/build/index.html"));
+  });
+}
 
 app.get("/", (req, res) => {
   res.send("OK");
@@ -51,7 +64,9 @@ io.on("connection", async (socket) => {
             term: null,
           };
         } catch (err) {
-          if (err.toString()?.includes(`Container named ${id} already exists.`)) {
+          if (
+            err.toString()?.includes(`Container named ${id} already exists.`)
+          ) {
             let containerId = (await getContainerDetails(id)).Id;
             connections[id] = {
               containerId,
@@ -79,7 +94,7 @@ io.on("connection", async (socket) => {
           }
         );
       } else {
-        socket.emit("result",connections[id].lastMessage);
+        socket.emit("result", connections[id].lastMessage);
       }
 
       let term = connections[id].term;

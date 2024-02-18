@@ -10,7 +10,7 @@ const Terminal: React.FC<TerminalProps> = () => {
   const terminalRef = useRef<HTMLDivElement | null>(null);
   const terminalInstance = useRef<XTerm | null>(null);
 
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [,setIsConnected] = useState<boolean>(false);
 
   useEffect(() => {
     socket.connect();

@@ -1,7 +1,8 @@
 {
   "scripts": {
     "dev": "nodemon app.js",
-    "test": "jest"
+    "test": "jest",
+    "start": "MODE=PRODUCTION node app.js"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
