@@ -2,6 +2,10 @@ const { exec } = require("child_process");
 const { stdout, stderr } = require("process");
 const util = require("util");
 const exec2 = util.promisify(require("child_process").exec);
+const Dockerode = require("dockerode");
+const { resolve } = require("path");
+
+const docker = new Dockerode({});
 
 async function pullImage(imageName, tag = "latest") {
   const image = exec(`docker pull ${imageName}:${tag}`);
@@ -59,36 +63,57 @@ async function getContainerProcess(containerName) {
   });
 }
 
-// (async () => {
-//   await getContainerProcess("test");
-// })()
-
-async function createContainer(containerName, imageName, port = 80) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      console.log(`Creating container ${containerName}`);
-      exec(
-        `docker run -d --name ${containerName} ${imageName} tail -f /dev/null`,
-        (err, stdout, stderr) => {
-          if (stderr?.includes("docker: Error response from daemon: Conflict."))
-            reject(
-              new Error(`Container named ${containerName} already exists.`)
-            );
-          else resolve(stdout);
-        }
-      );
-    } catch (err) {
-      reject(err);
-    }
+/**
+ * 
+ * @param {string} name 
+ * @param {Object} opts 
+ * @returns {Promise<Dockerode.Container>}
+ */
+async function ensureContainer(name, opts) {
+  let containerInfo = await getContainer(name);
+  if (containerInfo != null) {
+    return docker.getContainer(name);
+  }
+  return new Promise((resolve, reject) => {
+    docker
+      .createContainer({
+        name,
+        Image: "ubuntu",
+        Entrypoint: ["tail"],
+        Cmd: ["-f", "/dev/null"],
+      })
+      .then((container) => {
+        return resolve(container);
+      })
+      .catch((err) => {
+        return reject(err);
+      });
   });
 }
 
-// createContainer("test", "ubuntu:latest", 4000).then(res => console.log(res)).catch(err => console.log(err));
+// ensureContainer('ajs')
+
+
+
+
+async function getContainer(name, opts) {
+  try {
+    let container = docker.getContainer(name);
+    let info = await container.inspect();
+    return info;
+  } catch (err) {
+    if (err?.reason == "no such container") {
+      return null;
+    } else {
+      throw err;
+    }
+  }
+}
 
 module.exports = {
-  createContainer,
+  ensureContainer,
   pullImage,
   containerExists,
   getContainerProcess,
-  getContainerDetails
+  getContainerDetails,
 };

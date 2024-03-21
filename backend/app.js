@@ -2,11 +2,13 @@ const express = require("express");
 const { createServer } = require("http");
 const path = require("path");
 const { Server } = require("socket.io");
+const Dockerode = require('dockerode');
 require("dotenv").config();
 const {
   createContainer,
   getContainerProcess,
   getContainerDetails,
+  ensureContainer,
 } = require("./docker");
 const port = process.env.PORT || 9000;
 const cors = require("cors");
@@ -20,6 +22,7 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
   },
 });
+
 
 const connections = {};
 
@@ -53,42 +56,38 @@ io.on("connection", async (socket) => {
 
     socket.on("id", async (id) => {
       console.log("ID received:", id);
-      // container does not exist, create it
-      if (!connections[id]) {
-        try {
-          let containerId = await createContainer(id, "ubuntu");
-          console.log("Created container:", containerId);
-          connections[id] = {
-            containerId,
-            socketId: socket.id, // be aware, changes on reconnect
-            term: null,
-          };
-        } catch (err) {
-          if (
-            err.toString()?.includes(`Container named ${id} already exists.`)
-          ) {
-            let containerId = (await getContainerDetails(id)).Id;
-            connections[id] = {
-              containerId,
-              socketId: socket.id, // be aware, changes on reconnect
-              term: null,
-            };
-          } else {
-            throw err;
-          }
+
+      /**
+       * @type {Dockerode.Container}
+       */
+      let container;
+
+      if(!connections[id]) {
+        container = await ensureContainer(id);
+        // await container.start();
+        connections[id] = {
+          container
         }
+      } else {
+        container = connections[id].container;
       }
+
+      /**
+       * @type {Dockerode.ContainerInspectInfo}
+       */
+      let containerInfo = await container.inspect();
+      if(!containerInfo.State.Running) await container.start();
 
       // bash session does not exist, create it
       if (!connections[id].term) {
         console.log(connections[id].containerId);
         connections[id].term = pty.spawn(
           "docker",
-          ["exec", "-it", connections[id].containerId, "bash"],
+          ["exec", "-it", containerInfo.Id, "bash"],
           {
             name: "xterm-color",
             cols: 95,
-            rows: 32,
+            rows: 10,
             cwd: process.env.HOME,
             env: process.env,
           }
@@ -103,7 +102,6 @@ io.on("connection", async (socket) => {
       term.onData((data) => {
         console.log("====================================");
         console.log("Terminal output:", data);
-        console.log("====================================");
         connections[id].lastMessage = data;
         socket.emit("result", data);
       });
