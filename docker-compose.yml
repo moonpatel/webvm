@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: backend
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - 9000:9000
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock
+
+  frontend:
+    container_name: frontend
+    build: ./frontend
+    env_file:
+      - ./frontend/.env
+    ports:
+      - 5173:5173
