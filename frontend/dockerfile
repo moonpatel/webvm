@@ -1,0 +1,15 @@
+FROM node
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+RUN npm install --silent
+
+COPY . .
+
+# EXPOSE 5173:5173
+
+ENV VITE_BACKEND_HOST=http://localhost:9000
+
+CMD [ "npm", "run", "dev" ]
