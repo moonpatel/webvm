@@ -1,47 +1,10 @@
-const express = require("express");
-const { createServer } = require("http");
-const path = require("path");
-const { Server } = require("socket.io");
-require("dotenv").config();
-const {
-  createContainer,
-  getContainerProcess,
-  getContainerDetails,
-} = require("./docker");
-const port = process.env.PORT || 9000;
-const cors = require("cors");
-const pty = require("node-pty");
-
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
+// @ts-nocheck
+import pty from "node-pty";
+import { CustomSocket } from "./types";
 
 const connections = {};
 
-app.use((req, res, next) => {
-  console.log(req.ip, req.url);
-  next();
-});
-app.use(cors());
-
-if (process.env.MODE === "PRODUCTION") {
-  console.log("Starting in production...");
-  app.use(express.static(path.join(__dirname, "../frontend/build")));
-  app.use("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../frontend/build/index.html"));
-  });
-}
-
-app.get("/", (req, res) => {
-  res.send("OK");
-});
-
-io.on("connection", async (socket) => {
+export const socketConnectionHandler = async (socket: CustomSocket) => {
   try {
     console.log("Connections:", connections);
     console.log("New socket connected:", socket.id);
@@ -108,7 +71,7 @@ io.on("connection", async (socket) => {
         socket.emit("result", data);
       });
 
-      socket.on("command", (command) => {
+      socket.on("command", (command: string) => {
         console.log("Command:", command);
         term.write(command);
       });
@@ -116,8 +79,4 @@ io.on("connection", async (socket) => {
   } catch (err) {
     throw err;
   }
-});
-
-httpServer.listen(port, () => {
-  console.log("Listening on port", port);
-});
+};
