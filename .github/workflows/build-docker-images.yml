@@ -18,9 +18,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build Docker image
-        run: docker build -t vm-image -f vm-container.dockerfile .
+        run: docker build -t vm --file vm-container.dockerfile .
 
       - name: Push Docker image
         run: |
-          docker tag my-vm-image -image:latest
-          docker push webvm/my-vm-image:latest
+          docker tag vm moonpatel/webvm:latest
+          docker push moonpatel/webvm:latest
