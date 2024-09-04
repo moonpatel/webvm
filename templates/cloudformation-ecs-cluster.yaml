@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The template used to create an ECS Cluster for WebVM project.
+Parameters:
+  ECSClusterName:
+    Type: String
+    Description: Cluster for WebVM project
+    Default: webvm-cluster
+  SecurityGroupIds:
+    Type: CommaDelimitedList
+    Description: Optional - Specifies the Comma separated list of the Security Group Id of an existing Security Group.
+    Default: ''
+  VpcId:
+    Type: String
+    Description: Optional - Specifies the ID of an existing VPC in which to launch your container instances. If you specify a VPC ID, you must specify a list of existing subnets in that VPC. If you do not specify a VPC ID, a new VPC is created with at least 1 subnet.
+    Default: ''
+    AllowedPattern: ^(?:vpc-[0-9a-f]{8,17}|)$
+    ConstraintDescription: VPC Id must begin with 'vpc-' and have a valid uuid
+  SubnetIds:
+    Type: CommaDelimitedList
+    Description: Optional - Specifies the Comma separated list of existing VPC Subnet Ids where ECS instances will run
+    Default: ''
+  LatestECSOptimizedAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/kernel-5.10/recommended/image_id
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ECSClusterName
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      ClusterSettings:
+        - Name: containerInsights
+          Value: disabled
+      ServiceConnectDefaults:
+        Namespace: webvm-cluster
+      Tags:
+        - Key: project
+          Value: webvm
+Outputs:
+  ECSCluster:
+    Description: The created cluster.
+    Value: !Ref ECSCluster
