@@ -27,6 +27,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./vm-container.dockerfile
+          file: ./docker/vm-container.dockerfile
           push: true
           tags: ${{secrets.DOCKERHUB_USERNAME}}/webvm:latest
