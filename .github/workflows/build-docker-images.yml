@@ -16,11 +16,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{secrets.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
 
-      - name: Build Docker image
-        run: docker build -t vm --file vm-container.dockerfile .
-
-      - name: Push Docker image
-        run: |
-          docker tag vm moonpatel/webvm:latest
-          docker push moonpatel/webvm:latest
+      - name: Build and push Docker image to DockerHub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./vm-container.dockerfile
+          push: true
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/webvm:latest
